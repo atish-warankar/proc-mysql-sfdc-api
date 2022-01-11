@@ -33,6 +33,17 @@
 						</sharedLibrary>
 					</sharedLibraries>
 					<classifier>mule-application</classifier>
+					<cloudHubDeployment>
+						<uri>https://anypoint.mulesoft.com</uri>
+						<muleVersion>${anypoint.muleVersion}</muleVersion>
+						<username>${anypoint.username}</username>
+						<password>${anypoint.password}</password>
+						<applicationName>${anypoint.appName}</applicationName>
+						<environment>${anypoint.env}</environment>
+						<region>${anypoint.region}</region>
+						<workers>${anypoint.workers}</workers>
+						<objectStoreV2>true</objectStoreV2>
+					</cloudHubDeployment>
 				</configuration>
 			</plugin>
 			<!--<plugin>
