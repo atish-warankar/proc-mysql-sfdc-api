@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+		<flow name="CreditProcessApiFlow" doc:id="a3c1ace4-d54b-4346-bc23-a26e831f9e78" >
+		<choice doc:name="Choice" doc:id="afa113b6-61b2-4f8e-92fa-9a1f316e8d63" >
+			<when expression="#[vars.credit_mysql_data.Borrower_Opportunity__c == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="09dc6cc5-b192-4322-9142-de9360c894f3" message="No new credit data found !!"/>
+			</when>
+			<otherwise >
+		<choice doc:name="Choice" doc:id="a0e63b8d-bfb7-44d3-b3c2-779adabe87cd">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="relationshipData" doc:id="0f43bc34-12f3-4c66-aca2-81fc0096efed">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json 
+var p1 = vars.credit_mysql_data
+fun creditBody(element)= read(element.Credit_Body__c,"application/json") default null
+---
+p1 map((element) ->{
+        "Credit_Summary_ID__c": element.Credit_Summary_ID__c,
+        "Contact__r": {"Superkey__c" : element.Contact_superkey},
+        "Borrower_Opportunity__r": {"Platform_Opportunity_ID__c":element.Borrower_Opportunity__c},
+		"Active_Credit_Decision_ID__c": element.Active_Credit_Decision_ID__c,
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					</when>
+					<otherwise >
+<ee:transform doc:name="creditData" doc:id="bbe06be8-4f00-4d78-9050-418c0a3ca079">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.credit_mysql_data
+fun creditBody(element)= read(element.Credit_Body__c,"application/json") default null
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format: "yyyy-MM-dd"}
+---
+p1 map((element) ->{
+		"FICO_Score_Factors__c": element.FICO_Score_Factors__c,
+        "Income__c": element.Income__c,
+        "Stated_Other_Household_Annual_Income__c":element.statedOtherAnnualIncome,
+        "Decision_Reason__c": element.Decision_Reason__c,
+        "Borrowing_Limit__c": element.Borrowering_Limit__c,
+        "Last_Name__c": element.Last_Name__c,
+        "Zip__c": element.Zip__c,
+        "Birthdate__c": format(element.Birthdate__c),
+        "Phone_1__c": element.Phone_1__c,
+        "City__c": element.City__c,
+        "Credit_Summary_ID__c": element.Credit_Summary_ID__c,
+        "First_Name__c": element.First_Name__c,
+        "Street__c": element.Street__c,
+        //"Credit_Body__c": element.Credit_Body__c,
+        "Credit_Bankruptcy__c":write(creditBody(element).bankruptcy,"application/json",{indent:true}),
+        "Credit_DTI_Info__c": write(creditBody(element).dti,"application/json",{indent:true}),
+        "Credit_Home_Value__c":write(creditBody(element).homeValue,"application/json",{indent:true}),
+        "Credit_Identity_Info__c":write(creditBody(element).identity,"application/json",{indent:true}),
+        "Credit_Tradeline_Info__c":write(creditBody(element).tradeline,"application/json",{indent:true}),
+        "FICO_Score__c":creditBody(element).ficoScore,
+        "State__c": element.State__c,
+        "Phone_2__c": element.Phone_2__c,
+        "Decision_Date__c": format(element.Decision_Date__c),
+        "Electronic_Disclosure_Consent__c": element.Electronic_Disclosure_Consent__c,
+        "Credit_Consent__c": element.Credit_Consent__c,
+        "Active_Credit_Decision_ID__c": element.Active_Credit_Decision_ID__c,
+        "Status_Date__c": format(element.Status_Date__c),
+        "Decision_Expiration__c": format(element.Decision_Expiration__c),
+        "Application_Type__c": element.Application_Type__c,
+        "Is_Partial_Application__c": element.Is_Partial_Application__c,
+        "Platform_Date_Created__c": element.Platform_Date_Created__c,
+        "Decision__c": element.Decision__c,
+        "Privacy_Agreement__c": element.Privacy_Agreement__c,
+        "Credit_Report_Date__c": format(element.Credit_Report_Date__c),
+        "SSN_Last_Four__c": element.SSN_Last_Four__c,
+        "Credit_Decision_Platform_Date_Created__c": element.Credit_Decision_Platform_Date_Created__c,
+        "Vantage_Score__c": element.Vantage_Score__c,
+         "Name" : element.Name
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+					</otherwise>
+				</choice>
+		<foreach doc:name="For Each" doc:id="1a61c42a-fdc1-4e0a-9ed0-14cfdb402378" collection="payload" batchSize="30000">
+					<ee:transform doc:name="jsonPayload" doc:id="4a94d2ec-9aba-443d-b7cd-5c4275bdf153" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api: upsertCreditDataFlow" doc:id="12686bf8-73b8-46df-9335-5c92411106d0" config-ref="HTTP_Request_sfdc_configuration" path="/credits" >
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="c280a55d-875d-4cf5-baa9-be977cf30fdb" message="Credit Flow Completed !! "/>
+			
+			
+</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4dc620d9-06a0-49f9-870e-568bc6152701" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="ea0d5423-6d59-4727-94de-1827614d67a5" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="e521aa4a-055c-478b-8fa0-6dfbdfc17fdf" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+		
+			</flow>
+	
+	
+	</mule>

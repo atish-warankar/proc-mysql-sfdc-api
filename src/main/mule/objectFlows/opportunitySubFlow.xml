@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	<flow name="opportunityProcessAPIFlow" doc:id="c650edbe-463f-4576-99db-f051f9e1e5fc" >
+		<choice doc:name="Choice" doc:id="016fb598-57f7-4f86-99b0-e9465a1f6fbe" >
+			<when expression="#[vars.opportunityCount == 0]">
+				<set-variable value="#[vars.lastRunTimestamp]" doc:name="set_default_startTime" doc:id="667b7ed7-2b60-4be0-a441-e67ce898445a" variableName="startTime" />
+				<logger level="INFO" doc:name="No Data" doc:id="72d09d77-7562-4a97-b7bc-cbe161e9d2ed" message="No Opportuinity Data !!"/>
+			</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="99443473-72b1-41e0-b89a-e2bda2840a99">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="relationshipData" doc:id="bb3f3b24-cf0a-4efc-b1dc-ba038a2aaac3" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json 
+var p1 = vars.op_mysql_data
+---
+p1 map((element) ->{
+ "Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+    ("Account_Name__r" : {"Channel_Partner_ID__c": element.Partner_Account__c})if (element.Partner_Account__c != null),
+     //SF-4321
+    ("Branch_Id__r" : {"Branch_Id__c": element.Branch_Id__c})if (element.Branch_Id__c != null),
+    ("Borrower_Contact__r": {"Superkey__c":element.Borrower_Contact__c}) if (element.Borrower_Contact__c != null),
+	("Sales_person__r": {"User_Id__c":element.Sales_person__c}) if (element.Sales_person__c != null),
+	("Solar_System__r":{"Platform_Solar_System_ID__c":element.Solar_System__c}) if (element.Solar_System__c != null)  ,
+	//("Active_Credit_Application__r":{"Active_Credit_Decision_ID__c":element.Active_Credit_Application__c}) if (element.Active_Credit_Application__c != null) ,
+	("Active_Loan__r":{"Loan_Agreement_Platform_ID__c":element.Active_Loan__c}) if (element.Active_Loan__c != null)
+
+})]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise>
+						<ee:transform doc:name="opportunityData" doc:id="f0813ce5-1590-41b5-9e2a-715d6fdb832c" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.op_mysql_data
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format:"yyyy-MM-dd"}
+---
+p1 map((element) ->{
+	"Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+	"last_name__c": element.last_name__c,
+	"first_name__c": element.first_name__c,
+	"Opportunity_Type_ID__c": element.Opportunity_Type_ID__c,
+	"Language__c": element.Language__c,
+	"Address_Street__c": element.Address_Street__c,
+	"Address_Street_Two__c": element.Address_Street_Two__c,
+	"Address_City__c": element.Address_City__c,
+	"Address_State__c": element.Address_State__c,
+	"Address_Zip__c": if ( element.Address_Zip__c != null ) element.Address_Zip__c as String else null,
+	"Email__c": element.Email,
+	"HIA_Number__c": element.installer_agreement_id,
+	"On_hold__c": if ( element.On_hold__c == "true" ) "true" else "false",
+	"Platform_Date_Created__c": format(element.Platform_Date_Created__c),
+	"Platform_Date_Updated__c": element.Platform_Date_Updated__c,
+	"Platform_Status_ID__c": element.Platform_Status_ID__c,
+	"phone1__c": element.phone1__c,
+	"phone2__c": element.phone2__c,
+	"Contact_Full_Name__c": element.Contact_Full_Name__c,
+	"Stage__c": element.stage,
+	"Name": element.Name,
+	// SF-2427
+	Platform_Loan_Transfer_ID__c: element.Platform_Loan_Transfer_ID__c,
+	Loan_Transfer_Date__c: element.Loan_Transfer_Date__c,
+	// SF-4031
+	Loan_Document_URLs__c : element.Documents_URL__c
+	
+})]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+				<foreach doc:name="For Each" doc:id="a871c107-a1dc-4e30-802f-aebc9cd66bd1" collection="payload" batchSize="30000">
+					<ee:transform doc:name="jsonPayload" doc:id="7bf6c303-0acd-4715-bc95-4633043275c0" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertOpportunitiesBusinessLogicFlow" doc:id="fe3402e6-8df1-45d0-a209-1966bd99fd78" path="/opportunities" config-ref="HTTP_Request_sfdc_configuration">
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="f9b6d312-5b5d-4944-acdd-7ebc5eddaf34" message="Opportunity Flow Completed !!"/>
+			
+			
+</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb7b1a52-a239-4bad-8e4f-bd5e8d849e8c" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="e3b0dd33-a209-4ed4-861e-3308b5564a29" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="3970b8ba-4414-4070-b74a-f69ec4ba29d3" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+					
+	</flow>
+	<flow name="opportunityRelationshipFlow" doc:id="fe4a2833-c13a-426b-b443-21b654c02893" >
+		<logger level="INFO" doc:name="Logger" doc:id="8e6ee6bf-0536-4f3a-9ef3-b569ca5e58bc" message="Opportunity Relationship flow started !!"/>
+		<choice doc:name="Choice" doc:id="bbd7d9c1-c562-47a0-9f49-f44b92007539" >
+			<when expression="#[vars.op_mysql_data.response == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="001706dc-7491-4a73-bfe3-9b572695aeb7" message="No new data"/>
+				<ee:transform doc:name="total count" doc:id="73e65c0f-9e46-4c44-b1d1-3530336107b9">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="totalCount"><![CDATA[%dw 2.0
+output application/java
+---
+(vars.opportunityCount default 0) + (vars.projectCount default 0) + (vars.contactCount default 0) + (vars.loanCount default 0) ]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<logger level="INFO" doc:name="Final log" doc:id="37b6008d-766f-41ab-a3c4-78e26601c8bc" message='#[%dw 2.0
+output application/java
+---
+"\nOpportunity Count : " ++ vars.opportunityCount 
+++ "\nProject Count : " ++ vars.projectCount
+++ "\nContact Count : " ++ vars.contactCount
+++ "\nLoan Count : " ++ vars.loanCount
+++ "\nTotal records processed : " ++ vars.totalCount
+++ "\nCurrent Time Stamp : " ++ vars.lastRunTimestamp
+++ "\nNew Time stamp : " ++ vars.startTime
+++ "\nStartTime : " ++  vars.currentTime 
+++ "\nEnd Time : " ++ now()]' />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="getSFDCJsonStructure" doc:id="a787e780-72dc-4aa1-a874-aa70fa33b02b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json 
+var p1 = vars.op_mysql_data
+---
+p1.response map((element) ->{
+ 	"Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+ 	("Borrower_Contact__r": {"Superkey__c":element.Borrower_Contact__c}) if (element.Borrower_Contact__c != null),
+	("Sales_person__r": {"User_Id__c":element.Sales_person__c}) if (element.Sales_person__c != null),
+	("Solar_System__r":{"Platform_Solar_System_ID__c":element.Solar_System__c}) if (element.Solar_System__c != null)  ,
+	//("Active_Credit_Application__r":{"Active_Credit_Decision_ID__c":element.Active_Credit_Application__c}) if (element.Active_Credit_Application__c != null) ,
+	("Active_Loan__r":{"Loan_Agreement_Platform_ID__c":element.Active_Loan__c}) if (element.Active_Loan__c != null),
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="410fb5bc-e86f-4f4f-99f7-e3370cab3095" collection="payload" batchSize="3000">
+					<ee:transform doc:name="jsonPayload" doc:id="c8739386-ab1b-41ac-ab1a-dad8ef7ab1f4" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertOpportunitiesBusinessLogicFlow" doc:id="bc35090d-4329-46d5-a426-f10acaab8561" path="/opportunities" config-ref="HTTP_Request_sfdc_configuration"/>
+				</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="23060d7d-12cf-42b9-9174-03e18cd1bcad">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="totalCount"><![CDATA[%dw 2.0
+output application/java
+---
+(vars.opportunityCount default 0) + (vars.projectCount default 0) + (vars.contactCount default 0) + (vars.loanCount default 0) ]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="db4bc76a-2cf5-45f1-a44d-f587a32f69b5" message='#["Opportunity relationship flow completed !!"]' />
+				<logger level="INFO" doc:name="Logger" doc:id="764f3f14-9870-45de-8ec9-ca955b7e8400" message='#[%dw 2.0
+output application/java
+---
+"\nOpportunity Count : " ++ vars.opportunityCount 
+++ "\nProject Count : " ++ vars.projectCount
+++ "\nContact Count : " ++ vars.contactCount
+++ "\nLoan Count : " ++ vars.loanCount
+++ "\nTotal records processed : " ++ vars.totalCount
+++ "\nCurrent Time Stamp : " ++ vars.lastRunTimestamp
+++ "\nNew Time stamp : " ++ vars.startTime
+++ "\nStartTime : " ++  vars.currentTime 
+++ "\nEnd Time : " ++ now()]'/>
+			
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="5f413c23-a7ff-4100-be63-d0efea7b72d5" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="1134e31c-2ba0-4273-a03e-f52adefb646b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="fecd194c-ff46-4ce2-9be6-22f7950ae823" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+		
+	</flow>
+	<sub-flow name="errorEmailSubFlow" doc:id="734457e5-121d-4464-9dc2-8ab647dd5dab" >
+				<email:send doc:name="Send" doc:id="27ed6c6d-7544-4334-917f-320df4f0a7b9" fromAddress="${smtp.from}" subject="Process Api Error" config-ref="Email_SMTP">
+			<email:to-addresses>
+				<email:to-address value="${smtp.to}" />
+			</email:to-addresses>
+    		<email:body contentType="text/html">
+
+    		</email:body>
+			
+		
+</email:send>
+	</sub-flow>
+	
+	
+	</mule>

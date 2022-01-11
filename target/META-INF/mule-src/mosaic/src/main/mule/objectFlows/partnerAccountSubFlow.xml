@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:java="http://www.mulesoft.org/schema/mule/java" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd">
+	<flow name="partnerAccountSubFlowFlow" doc:id="a0bdc1c4-a6e3-4380-aa25-a528e0ae2933" >
+		<choice doc:name="Choice" doc:id="d92d912a-4f04-4fee-9a74-6a29ad1762c4" >
+			<when expression="vars.partnerAccountCount == 0">
+				<logger level="INFO" doc:name="No data" doc:id="1a3c1bdb-b595-44e2-b7f6-88ff16827ff8" message="No new data"/>
+			</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="26611ced-9d54-4aa7-ad91-3b3ce8f19e76">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="Transform Message" doc:id="59dd5bfb-9962-406f-99e6-78d42d243613">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+import java!utils::ChannelPartnerFlag
+import * from dw::core::Strings
+var p1 = vars.partnerAccountData
+---
+flatten(flatten(p1 map (account, index) -> [
+	(ChannelPartnerFlag::getFlagsValues(account.Bitmask, account.Channel_Partner_ID__c) map{
+		Flag_Value__c: substringBefore($, ','),
+		Channel_Partner_ID__c: substringAfterLast((substringBeforeLast($, ',')), ','),
+		Flag_status:substringAfterLast($,','),
+		Channel_Partner_Flag_Key__c: substringAfterLast((substringBeforeLast($, ',')), ',') ++ '_' ++ substringBefore($, ',')
+	})
+]))]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<foreach doc:name="For Each" doc:id="db7c0ab9-78e6-40ff-9360-e9109f7147a4" collection="payload" batchSize="200">
+							<ee:transform doc:name="Transform Message" doc:id="70d8f36d-3033-4548-a885-e5f7bd8b8223" >
+								<ee:message >
+									<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+							<http:request method="POST" doc:name="salesforce_sys_api : upsertPartnersFlagsAccountBusinessLogicFlow" doc:id="d4b8a6e0-58d4-49dd-9fb8-6f36861820c1" config-ref="HTTP_Request_sfdc_configuration" path="/channelPartnerFlags">
+							<http:headers><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+						</http:request>
+						</foreach>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Transform Message" doc:id="56e5ff15-0f9b-4c9c-b399-ef13e1532363">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.partnerAccountData
+---
+p1 map ({
+	"BillingCity": $.BillingCity,
+	"ShippingStreet": $.ShippingStreet,
+	"BillingStateCode": $.BillingStateCode,
+	"Current_Monthly_Cap__c": $.Current_Monthly_Cap__c,
+	"Account_Tier__c": $.Account_Tier__c,
+	"ShippingPostalCode": $.ShippingPostalCode,
+	"ShippingCountry": $.ShippingCountry,
+	"Channel_Partner_ID__c": $.Channel_Partner_ID__c,
+	"BillingPostalCode": $.BillingPostalCode,
+	"BillingCountry": $.BillingCountry,
+	"Phone": $.Phone,
+	"Disbursement_Sequence_Id__c": $.Disbursement_Sequence_Id__c,
+	"BillingStreet": $.BillingStreet,
+	"States_Active__c": $.States_Active__c,
+	"ShippingStateCode": $.ShippingStateCode,
+	"ShippingCity": $.ShippingCity,
+	"Name": $.Name,
+	"Email_Domain__c": $.Email_Domain__c,
+	"Client_Secret__c": $.Client_Secret__c
+})]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+						<foreach doc:name="For Each" doc:id="0a1c9f77-d200-43f2-b620-4f22922d4797" collection="payload" batchSize="5000">
+					<ee:transform doc:name="Transform Message" doc:id="0230ec9e-a398-4c8b-8abc-15be912bc231">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertPartnersAccountBusinessLogicFlow" doc:id="88e318bb-5149-428f-b626-87b87fb3b30a" config-ref="HTTP_Request_sfdc_configuration" path="/partnersAccounts">
+						<http:headers><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+					</otherwise>
+				</choice>
+				<logger level="INFO" doc:name="Logger" doc:id="bb4e6781-6ed4-4e56-990f-a194779907ef" message="Partner Account flow Completed !!"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a62d251d-8226-4688-bc57-01bb1cdc2b3b" >
+				<ee:transform doc:name="Transform Message" doc:id="d54dcdbe-b8d9-45cd-b520-1a00593938f8" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="0d1d81e0-e77d-48a2-b79a-03a9f1f8ca4a" name="errorEmailSubFlow"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

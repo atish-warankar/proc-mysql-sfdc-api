@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+		<flow name="LoanApiProcessFlow" doc:id="807f5613-3be8-4a52-9ce7-075594642c0a" >
+		<choice doc:name="Choice" doc:id="ad16b7fe-7dab-4f3a-8621-11f266b522ba" >
+			<when expression="#[vars.loan_mysql_data.Borrower_Opportunity__c == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="b1b9c277-70a3-4d43-a9bd-b9da8274e32e" message="No new data"/>
+			</when>
+			<otherwise >
+		
+		<choice doc:name="Choice" doc:id="1000a74f-5a80-4059-96b5-d0b8abe1e7b1">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="relationshipData" doc:id="c03864a7-780e-4c41-8c03-1ccd5b5bf0af">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json 
+var p1 = vars.loan_mysql_data
+---
+p1 map((element) ->{
+        "DocuSign_Envelope_ID__c": element.DocuSign_Envelope_ID__c,
+        "Loan_Platform_ID__c": element.Loan_Platform_ID__c,
+        "Loan_Type_Id__c": element.Loan_Type_Id__c,
+        "Loan_Product_Configuration__r" : {
+        	    "type": "Loan_Product_Configuration__c",
+    			"lp_id__c": element.Loan_Product_Configuration__c
+    	 	},
+        "Borrower_Opportunity__r": {
+        		"Platform_Opportunity_ID__c":element.Borrower_Opportunity__c,
+        		"type": "Borrower_Opportunity__c"
+        	} ,
+        "Loan_Agreement_Platform_ID__c": element.Loan_Agreement_Platform_ID__c,
+        "Borrower__r":{"Superkey__c":element.Borrower__c, "type":"Contact"},
+       
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					</when>
+					<otherwise >
+<ee:transform doc:name="loanData" doc:id="997b6cf8-5e75-4ab8-8512-c351d67ee4e1">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.loan_mysql_data
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format: "yyyy-MM-dd"}
+---
+p1 map((element) ->{
+        "Loan_Agreement_State__c": element.Loan_Agreement_State__c,
+        "Closing_Date__c": element.Platform_Date_Created__cformat(element.Closing_Date__c),
+        "Loan_APR__c": element.Loan_APR__c,
+        "Loan_Agreement_Platform_Updated_Date__c": element.Loan_Agreement_Platform_Updated_Date__c,
+        "Loan_Status_ID__c": element.Loan_Status_ID__c,
+        "Countersigned_Date__c": format(element.Countersigned_Date__c),
+        "Current_Rate__c": element.Current_Rate__c,
+        "Terms_Interest_Compounding_Type_ID__c": element.Terms_Interest_Compounding_Type_ID__c,
+        "Origination_Date__c": format(element.Origination_Date__c),
+        "Missed_ITC_Payment__c": element.Missed_ITC_Payment__c,
+        "DocuSign_Envelope_ID__c": element.DocuSign_Envelope_ID__c,
+        "Loan_Agreement_Status_ID__c": element.Loan_Agreement_Status_ID__c,
+        "Recalc_Date__c": format(element.Recalc_Date__c),
+        "Lender_ID__c": element.Lender_ID__c,
+        "Loan_Amount__c": element.Loan_Amount__c,
+        "Loan_Agreement_Zipcode__c": element.Loan_Agreement_Zipcode__c,
+        "Maturity_Date__c": format(element.Maturity_Date__c),
+        "Loan_Platform_Date_Updated__c": element.Loan_Platform_Date_Updated__c,
+        "Loan_Platform_ID__c": element.Loan_Platform_ID__c,
+        "Loan_Type_Id__c": element.Loan_Type_Id__c,
+        "Loan_Agreement_City__c": element.Loan_Agreement_City__c,
+        "Reamortization_Type__c": element.Reamortization_Type__c,
+        "Loan_Agreement_Street_Two__c": element.Loan_Agreement_Street_Two__c,
+        "Loan_Agreement_Platform_Created_Date__c": element.Loan_Agreement_Platform_Created_Date__c,
+        "Standard_Monthly_Payment__c": element.Standard_Monthly_Payment__c,
+        "Loan_Agreement_Street__c": element.Loan_Agreement_Street__c,
+        "Disbursement_Sequence__c": element.Disbursement_Sequence__c,
+        "Effective_Date__c": format(element.Effective_Date__c),
+        "Minimum_Payment_Amount__c": element.Minimum_Payment_Amount__c,
+        "Pay_By_Check__c": element.Pay_By_Check__c,
+        "First_Payment_Due__c": format(element.First_Payment_Due__c),
+        "Name": element.Name,
+        "Choice_Rate__c": element.Choice_Rate__c,
+        "Loan_Agreement_First_Name__c": element.Loan_Agreement_First_Name__c,
+        "Loan_Agreement_Last_Name__c": element.Loan_Agreement_Last_Name__c,
+        "Standard_Rate__c": element.Standard_Rate__c,
+        "Loan_Servicer_ID__c": element.Loan_Servicer_ID__c,
+        "Warehouse_ID__c": element.Warehouse_ID__c,
+        "Automatic_Payments__c": if(element.Pay_By_Check__c) element.Automatic_Payments__c else true,
+        "Loan_Platform_Date_Created__c": format(element.Loan_Platform_Date_Created__c),
+        "Recalc_Date_Required_Balance__c": element.Recalc_Date_Required_Balance__c,
+        "Original_Amount__c": element.Original_Amount__c,
+        "Loan_Agreement_Platform_ID__c": element.Loan_Agreement_Platform_ID__c,
+        "Payment_Day__c": element.Payment_Day__c,
+        "Loan_Months_Term__c": element.Loan_Months_Term__c,
+        "Cancellation_Reason__c": element.Cancellation_Reason__c,
+        "Choice_Monthly_Payment__c": element.Choice_Monthly_Payment__c,
+        "Loan_Product_Configuration__r" : {
+    			"lp_id__c": element.Loan_Product_Configuration__c
+    	 }
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+					</otherwise>
+				</choice>
+		<foreach doc:name="For Each" doc:id="a438aa29-b2fb-4585-b77f-462262552baa" collection="payload" batchSize="30000">
+					<ee:transform doc:name="jsonPayload" doc:id="e686a743-ae28-4df3-860d-58e9874bc6e5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api: upsertCreditDataFlow" doc:id="7a9078ba-70f4-459b-93d7-c7208c3b95c8" config-ref="HTTP_Request_sfdc_configuration" path="/loans" >
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="6e73e1d5-dfbd-475c-acdc-69a7b643d50f" message="loan flow completed !!"/>
+			
+			
+</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="9d00ca8c-c236-404d-bad1-2ad74dbc8701" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="aeeef882-cee5-4753-91d1-ee4ebb75259a" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="27554fe0-e731-4e3f-8c20-d98a51df1c6b" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+		
+			</flow>
+	
+	
+	</mule>

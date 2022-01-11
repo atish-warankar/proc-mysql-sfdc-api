@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+				<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="98ac43af-2cda-402b-97fe-b47aa6e37665" >
+		<email:smtp-connection host="${smtp.host}" port="${smtp.port}" user="${smtp.user}" password="${smtp.password}" >
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="105a3194-6f2e-4030-b40d-27b3bd865aea" >
+		<http:listener-connection host="${http.host}" port="${http.port}" connectionIdleTimeout="30000000"/>
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="3bd500a9-9cfa-41ba-a7fd-0d149e864827" file="config/${env}-properties.yaml" />
+	<configuration doc:name="Configuration" doc:id="6dacfcd8-b534-423f-a2ed-6b1d7acb8c62" defaultErrorHandler-ref="Error_Handler" />
+	<global-property doc:name="Global Property" doc:id="89ab8ba3-ecec-41c3-803d-c72180c22123" name="env" value="prod" />
+	<http:request-config name="HTTP_Request_MySQL_configuration" doc:name="HTTP Request configuration" doc:id="5848b44c-2f92-4f33-a869-26945f10168f" basePath="/api" responseTimeout="3000000">
+		<http:request-connection host="${http.mysql.host}" port="8091" connectionIdleTimeout="300000000">
+			<reconnection >
+				<reconnect />
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_sfdc_configuration" doc:name="HTTP Request configuration" doc:id="4903980f-dbd0-4c3f-9c50-e98fd1e0f13c" basePath="/api" responseTimeout="9000000">
+		<http:request-connection host="${http.sfdc.host}" port="8091" connectionIdleTimeout="9000000">
+			<reconnection />
+		</http:request-connection>
+	</http:request-config>
+	<!--  <salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="bf2a3bcb-f5de-49c6-bdfd-ff871147cb6e" >
+		<salesforce:basic-connection username="${sfdc.user}" password="${sfdc.pass}" securityToken="${sfdc.securityToken}" url="${sfdc.authenticationURL}"/>
+	</salesforce:sfdc-config> -->
+</mule>

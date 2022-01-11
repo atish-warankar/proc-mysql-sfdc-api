@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<flow name="loanAgreementSubFlowFlow" doc:id="4236578a-f11d-4dd2-9d9a-b0112c6b5946" >
+		<choice doc:name="Choice" doc:id="3eabe253-4701-44db-9999-9d05dacf0b43" >
+			<when expression="#[vars.loanAgreementCount == 0]">
+				<logger level="INFO" doc:name="Logger" doc:id="0a62a818-d990-475a-98ca-783d33b86a77" message="No New data in Loan Agreement"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="2e9589e8-51a2-4b32-acda-a7840fd1145b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format: "yyyy-MM-dd"}
+var p1 = vars.loanAgreementData
+---
+p1 map ({
+	"BLT_Platform_ID__c": $.BLT_Platform_ID__c,
+    "BLTA_Platform_ID__c": $.BLTA_Platform_ID__c,
+    "Loan_Agreement_Platform_ID__c": $.Loan_Agreement_Platform_ID__c,
+    "Loan_Platform_ID__c": $.Loan_Platform_ID__c,
+    "BLT_Buyer_Opportunity__c": $.BLT_Buyer_Opportunity__c,
+    "Name": $.Name,
+    "Creation_Date__c": format($.Creation_Date__c),
+    "Expiration_Date__c": format($.Expiration_Date__c),
+    "Purchaser_Name__c": $.Purchaser_Name__c,
+    "Seller_Name__c": $.Seller_Name__c,
+    "Signature_Date__c": $.Signature_Date__c,
+    "Status_ID__c": $.Status_ID__c,
+    "Transfer_Balance__c": $.Transfer_Balance__c,
+    "Countersigned_Date__c": format($.Countersigned_Date__c),
+    "BLT_Created_Date__c": $.BLT_Created_Date__c,
+    "BLT_Credit_Decision_Date__c": format($.BLT_Credit_Approval_Date__c),
+    "BLT_Credit_Approval_Status__c": $.BLT_Credit_Approval_Status__c,
+    "BLT_Status_ID__c": $.BLT_Status_ID__c,
+    "BLT_Transfer_Date__c": format($.BLT_Transfer_Date__c)
+})]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<foreach doc:name="For Each" doc:id="d1bdf23d-fba0-456d-89aa-fec7abe38159" collection="payload" batchSize="5000">
+					<ee:transform doc:name="Transform Message" doc:id="587d74ce-a86a-4865-8575-966db18433a5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api: upsertBLTADataFlow" doc:id="5d410f44-9288-46c2-ac09-8146924a09c8" config-ref="HTTP_Request_sfdc_configuration" path="/loanAgreement">
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8757ccc2-3087-40e2-be07-080c5d1a9ea7" >
+				<ee:transform doc:name="Transform Message" doc:id="4b9cebe7-dd0a-4779-8856-779ec5e9eab6" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="Error email flow" doc:id="ba25fa53-f1d7-45b3-8fe2-e08c12c65a35" name="errorEmailSubFlow"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<sub-flow name="loanAgreementCase_SubFlow" doc:id="a01a5060-05a4-44fa-bc73-e2e897c878f0" >
+		<set-variable value="#[p('loanAgreement.recordTypeId')]" doc:name="Set Record Type Id" doc:id="c068e9b9-30d7-4a14-ae30-f1ca90fb091e" variableName="recordTypeId" />
+		<ee:transform doc:name="Transform Message" doc:id="ff089ea6-755c-46b8-a0ef-b5b1e311ebdb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+var p1 = vars.loanAgreementData
+---
+p1.*Loan_Agreement_Platform_ID__c default [] joinBy ', ']]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="GET" doc:name="salesforce_sys_api : getLoanCases" doc:id="c1582d8b-9c00-4a12-a300-286db80a3156" config-ref="HTTP_Request_sfdc_configuration" path="/loanAgreement" target="loanCases">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"recordTypeId" : vars.recordTypeId
+}]]]></http:headers>
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"loanAgreementId" : payload
+}]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="871cdd0a-e24b-482e-9853-222d91a61965" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var p1 = vars.loanAgreementData
+---
+p1 map(value, index) -> {
+	Status: value.Status,
+	Loan_Platform_ID__c: value.Loan_Platform_ID__c,
+	(vars.loanCases filter ($.*loan.Loan_Platform_ID__c contains value.Loan_Platform_ID__c ) map({
+		BLT_Primary_Case__c: $.loan.BLT_Primary_Case__c,
+		Loan_Agreement_Platform_ID__c: $.loan.Loan_Agreement_Platform_ID__c,
+		CaseRelated: $.loan.Case_Loan
+	}))
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>

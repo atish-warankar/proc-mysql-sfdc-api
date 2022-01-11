@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	
+	<flow name="process_cronFlow" doc:id="b3650a11-4d86-4b22-9283-6fd4848081d3" maxConcurrency="1">
+		<scheduler doc:name="Scheduler" doc:id="2b512449-d300-4d7c-8de4-1b067d0d4daf" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</scheduler>
+		<os:retrieve doc:name="retrieve_lastRunTimeStampKey" doc:id="113a0708-ba6b-47ab-84fb-7f70eb32a3e2" key="lastRunTimeStampKey" target="lastRunTimestamp" targetValue="#[payload as String]">
+			<os:default-value ><![CDATA[#[p('objectstore.defaultvalue')]]]></os:default-value>
+		</os:retrieve>
+		<set-variable value="#[p('p.origin') default 'process']" doc:name="Set origin" doc:id="afad8548-23d7-4347-9eab-77375411bd91" variableName="origin"/>
+		<set-variable value="#[now()]" doc:name="Current Time" doc:id="f45a7e96-cac7-4654-96f6-56eee55eb1ff" variableName="currentTime"/>
+		<flow-ref doc:name="nonRelationshipsFlow" doc:id="d537ded9-5a6e-47d5-b712-f9f6da48639b" name="nonRelationshipFlow"/>
+		<scripting:execute engine="groovy" doc:name="relationshipDelay" doc:id="9fcf4b2d-5139-432d-8881-d7b0ffb12f1a" >
+			<scripting:code >sleep(${relationship.delay});
+return message.payload;</scripting:code>
+		</scripting:execute>
+		<set-variable value="#[true as Boolean]" doc:name="relationshipFlag" doc:id="d038fc82-87e5-43cc-8be8-24dd0070d2ce" variableName="relationshipFlag"/>
+		<flow-ref doc:name="relationshipsFlow" doc:id="dd6088a0-ca32-47a2-a4fb-602676024b4f" name="relationshipsFlow"/>
+		<ee:transform doc:name="Transform Message" doc:id="afb80393-1ae8-428d-a529-4b4773e69442" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="totalCount" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.opportunityCount + vars.projectCount + vars.contactCount + vars.loanCount + vars.partnerCount + vars.loanProductCount + vars.partnerAccountCount + vars.loanDisbursementCount]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<os:retrieve-all doc:name="Retrieve all" doc:id="c41bffef-23bb-479b-b44e-a17dec3e761b" target="idList"/>
+		<logger level="INFO" doc:name="FinalLog" doc:id="b1f88080-cf3b-4f24-bcb7-9914c03869bf" message='#[%dw 2.0
+output application/java
+---
+"\nLast Opportunity History Id: " ++ vars.idList.lastOpportunityId as String
+++ "\nLast Project History Id: " ++ vars.idList.lastProjectId as String
+++ "\nLast Borrower Investors History Id: " ++ vars.idList.lastInvestorId as String
+++ "\nLast Borrower Opportunity History Id: " ++ vars.idList.lastBorrowerId as String
+++ "\nLast Loan Agreement History Id: " ++ vars.idList.lastLoanAgreementId as String
+++ "\nLast Loan History Id: " ++ vars.idList.lastLoanHistoryId as String
+++ "\nLast Loan Product History Id: " ++ vars.idList.lastLoanProduct as String
+++ "\nLast Loan Disbursement History Id: " ++ vars.idList.lastLoanDisbursement as String
+++ "\nLast Partner Contact History Id: " ++ vars.idList.lastPartnerContactId as String
+++ "\nLast Partner Account History Id: " ++ vars.idList.lastPartnerAccount as String
+++ "\nLast Partner Product History Id: " ++ vars.idList.lastPartnerProduct as String
+++ "\n ---"
+++ "\nOpportunity Count : " ++ vars.opportunityCount 
+++ "\nProject Count : " ++ vars.projectCount
+++ "\nContact Count : " ++ vars.contactCount
+++ "\nLoan Count : " ++ vars.loanCount
+++ "\nLoan Product Count: " ++ vars.loanProductCount
+++ "\nLoan Disbursement Count: " ++ vars.loanDisbursementCount
+++ "\nPartner Contact Count : " ++ vars.partnerCount
+++ "\nPartner Account Count: " ++ vars.partnerAccountCount
+++ "\nPartner Product Count : " ++ vars.partnerProductCount
+++ "\nBorrower Loan Agreement Count : " ++ vars.loanAgreementCount
+++ "\nTotal records processed : " ++ vars.totalCount
+++ "\nStartTime : " ++  vars.currentTime 
+++ "\nEnd Time : " ++ now()]'/>
+				
+	</flow>
+</mule>

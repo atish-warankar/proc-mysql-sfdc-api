@@ -1,0 +1,65 @@
+{
+  "configs": [
+    "objectFlows/creditSubFlow.xml",
+    "objectFlows/loanSubFlow.xml",
+    "objectFlows/partnerProductSubFlow.xml",
+    "objectFlows/opportunitySubFlow.xml",
+    "businessLogic.xml",
+    "objectFlows/loanAgreementSubFlow.xml",
+    "objectFlows/partnerContactSubFlow.xml",
+    "objectFlows/loanProductSubFlow.xml",
+    "globalErrorHandling.xml",
+    "objectFlows/partnerAccountSubFlow.xml",
+    "config.xml",
+    "endpoints.xml",
+    "objectFlows/loanDisbursementSubFlow.xml",
+    "objectFlows/projectSubFlow.xml",
+    "objectFlows/contactSubFlow.xml"
+  ],
+  "secureProperties": [
+    "sdfc.user",
+    "sdfc.pass",
+    "sdfc.securityToken",
+    "smtp.user",
+    "smtp.password"
+  ],
+  "redeploymentEnabled": true,
+  "name": "com.mycompany:mosaic:1.0.0-SNAPSHOT",
+  "minMuleVersion": "4.1.4",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedPackages": [
+        "utils"
+      ],
+      "exportedResources": [
+        "log4j2.xml",
+        "globalErrorHandling.xml",
+        "config/local-properties.yaml",
+        "config/prod-properties.yaml",
+        "config/stg-properties.yaml",
+        "config/dev-properties.yaml",
+        "endpoints.xml",
+        "businessLogic.xml",
+        "application-types.xml",
+        "config.xml",
+        "objectFlows/creditSubFlow.xml",
+        "objectFlows/projectSubFlow.xml",
+        "objectFlows/partnerAccountSubFlow.xml",
+        "objectFlows/opportunitySubFlow.xml",
+        "objectFlows/loanSubFlow.xml",
+        "objectFlows/loanProductSubFlow.xml",
+        "objectFlows/partnerContactSubFlow.xml",
+        "objectFlows/loanAgreementSubFlow.xml",
+        "objectFlows/loanDisbursementSubFlow.xml",
+        "objectFlows/partnerProductSubFlow.xml",
+        "objectFlows/contactSubFlow.xml"
+      ]
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

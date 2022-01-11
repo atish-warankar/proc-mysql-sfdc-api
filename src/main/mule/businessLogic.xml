@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<sub-flow name="nonRelationshipFlow" doc:id="19a91ad4-e476-4f3f-be1a-9d69c47eb9ad" >
+		<flow-ref doc:name="partnerAccountNonRelationshipFlow" doc:id="86a67a86-f7f5-4b52-bca9-2043a0f6e2d7" name="partnerAccountNonRelationshipFlow" />
+		<flow-ref doc:name="partnerNonRelationshipFlow" doc:id="3f2e58d4-6726-40ab-b276-4f908e828414" name="partnerNonRelationshipFlow" />
+		<flow-ref doc:name="opportunityNonRelationshipSubflow" doc:id="49bad839-70cb-45c4-ad85-6a74ae1d84fb" name="opportunityNonRelationshipSubflow" />
+		<flow-ref doc:name="projectNonRelationshipSubflow" doc:id="8035279b-a26e-4914-a01d-f528f74cc87f" name="projectNonRelationshipSubflow"/>
+		<flow-ref doc:name="contactNonRelationshipSubflow" doc:id="d0599744-a51e-4f05-8567-717a49f1bc5b" name="contactNonRelationshipSubflow"/>
+		<flow-ref doc:name="loanNonRelationshipFlow" doc:id="629d4a67-f5f5-48b9-b73a-61a1080850fe" name="loanNonRelationshipFlow"/>
+		<flow-ref doc:name="loanDisbursementNonRelationshipFlow" doc:id="3ac57fa5-10c4-475a-9ab2-a02e65faa6f9" name="loanDisbursementFlow"/>
+		<flow-ref doc:name="loanProductNonRelationshipFlow" doc:id="4c20c7ec-48ea-4850-a194-2a171b184d11" name="loanProductNonRelationshipFlow"/>
+		<flow-ref doc:name="partnerProductNonRelationship" doc:id="a24adcda-f875-413e-b79e-edfef65a78b4" name="partnerProductNonRelationshipFlow"/>
+	</sub-flow>
+	<sub-flow name="opportunityNonRelationshipSubflow" doc:id="02864871-1e7c-48cb-80af-4658dd2672b5">
+		<logger level="INFO" doc:name="opportunityFlowStarted" doc:id="ce6e8142-8219-4b24-8c51-5cc579818825" message='#["StartTime :" ++ now() ++ "\nOpportunity Flow Started !!!"]' />
+		<os:retrieve doc:name="Retrieve lastOpportunityId" doc:id="efbcc177-ce26-4dae-bca1-15adc0905289" key="lastOpportunityId" target="lastOpportunityId">
+			<os:default-value ><![CDATA[#[p('id.opportunityId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api : opportunity_History_Flow" doc:id="847475eb-4ec7-4dcc-be59-ce8b6bedefbd" path="/opportunities" responseTimeout="#[10000000000000]" config-ref="HTTP_Request_MySQL_configuration">
+			<reconnect-forever />
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"lastOpportunityId" : vars.lastOpportunityId
+}]]]></http:headers>
+		</http:request>
+		<set-variable value='#[payload["payload"]]' doc:name="op_mysql_data" doc:id="821e1efa-53da-48a8-8929-ff97c3807a1b" variableName="op_mysql_data" />
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.op_mysql_data)) (sizeOf(vars.op_mysql_data)) else 0]" doc:name="opportunityCount" doc:id="f3f515fe-0510-49f0-9ef7-c235a39cff22" variableName="opportunityCount" />
+		<logger level="INFO" doc:name="countLogger" doc:id="5af289de-1c23-490e-b60b-9c44f2190900" message='#["Number of opportunity records fetched :" ++ vars.opportunityCount]' />
+		<logger level="INFO" doc:name="Last id Logger" doc:id="e91f92ac-674c-496f-8b66-ea076718b1a6" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastOpportunityId else payload['lastId'])]" />
+		<os:store doc:name="Store lastOpportunityId" doc:id="ae3f46d2-5920-48f8-af05-7dfd1e6b3fea" key="lastOpportunityId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastOpportunityId as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="opportunityProcessAPIFlow" doc:id="fca6972b-b086-4e34-8108-cbf1253d8d19" name="opportunityProcessAPIFlow" />
+	</sub-flow>
+	<sub-flow name="projectNonRelationshipSubflow" doc:id="3be6126e-8827-4c72-b5c5-81e63875131b" >
+			<logger level="INFO" doc:name="projectFlowStarted" doc:id="4d2bf1ed-ccd8-4e9b-b9b5-785fed3db07f" message='#["Project Flow Started !!!"]' />
+		<os:retrieve doc:name="Retrieve lastProjectId" doc:id="576a989b-3855-4cf2-8fd6-5b07273681e8" key="lastProjectId" target="lastProjectId">
+			<os:default-value ><![CDATA[#[p('id.projectId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api : project_History_Flow" doc:id="00ef7435-a6ef-410f-ab50-a26ea0ff58bc" path="/project" responseTimeout="#[10000000000000]" config-ref="HTTP_Request_MySQL_configuration">
+			<ee:repeatable-file-store-stream bufferUnit="MB" />
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"lastProjectId" : vars.lastProjectId
+}]]]></http:headers>
+		</http:request>
+		<set-variable value='#[payload["payload"]]' doc:name="project_mysql_data" doc:id="ff6bd63d-baa1-4fd8-b3a3-61913275df86" variableName="prj_mysql_data" />
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (vars.prj_mysql_data != null) (sizeOf(vars.prj_mysql_data)) else 0]" doc:name="projectCount" doc:id="95d39b23-dc17-40bf-88e0-e2095f24be21" variableName="projectCount" />
+		<logger level="INFO" doc:name="countLogger" doc:id="e55302bc-bcdb-4024-a8c2-4abd1369823b" message='#["Number of project records fetched :" ++ vars.projectCount]' />
+		<logger level="INFO" doc:name="Last id Logger" doc:id="45453b26-a376-4e8c-82c2-504a93ebeb8d" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastOpportunityId else payload['lastId'])]"/>
+		<os:store doc:name="Store lastProjectId" doc:id="ed3a8173-9abb-4da5-8936-4151245e5782" key="lastProjectId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastProjectId as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="projectProcessAPIFlow" doc:id="1bb895ed-9dd3-4f7c-8330-2be97d03d841" name="projectProcessAPIFlow" />
+
+	</sub-flow>
+	<sub-flow name="contactNonRelationshipSubflow" doc:id="500cae63-0ce6-4f22-b2d9-3b4919886847" >
+				<logger level="INFO" doc:name="contactFlowStarted" doc:id="727f6146-3258-4291-9756-96169277c07e" message='#["Contact Flow Started !!!"]' />
+		<os:retrieve doc:name="Retrieve lastBorrowerId" doc:id="876c15e3-fd9a-4f6a-9bfd-4947e1971fad" key="lastBorrowerId" target="lastBorrowerId">
+			<os:default-value ><![CDATA[#[p('id.borrowerId')]]]></os:default-value>
+		</os:retrieve>
+		<os:retrieve doc:name="Retrieve lastInvestorId" doc:id="ac7fe84f-c0d4-4735-9d33-49894b921d07" key="lastInvestorId" target="lastInvestorId">
+			<os:default-value ><![CDATA[#[p('id.lastInvestorId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api: borrower_history_flow" doc:id="0b27f9d8-6eed-4cba-a9b1-2ded11d31ec8" path="/borrowerContacts" config-ref="HTTP_Request_MySQL_configuration">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"lastBorrowerId" : vars.lastBorrowerId,
+	"lastInvestorId" : vars.lastInvestorId
+}]]]></http:headers>
+		</http:request>
+
+		<set-variable value='#[payload["payload"]]' doc:name="borrower_mysql_data" doc:id="df4d0ca1-bf2b-450f-8543-13390c426368" variableName="borrower_mysql_data" />
+		<set-variable value='#[%dw 2.0
+output application/java
+---
+if (vars.borrower_mysql_data.Platform_Opportunity_ID__c != null) (sizeOf(vars.borrower_mysql_data)) else 0]' doc:name="contactCount" doc:id="139c0bdf-c5b8-4a0e-aa67-27bec4aa5c26" variableName="contactCount" />
+		<logger level="INFO" doc:name="countLogger" doc:id="740a1edc-0221-44ac-9b00-64ec963a25f6" message='#["Number of Contact records fetched :" ++ vars.contactCount]' />
+		<logger level="INFO" doc:name="Last id Logger" doc:id="dd9fd764-c98e-4687-8b9a-45df516893ab" message="#[%dw 2.0
+output text/plain
+---
+'Last borrower id processed: ' ++ (if(isEmpty(payload['lastBorrowerId'])) vars.lastBorrowerId else payload['lastBorrowerId']) ++ '\n' ++
+'Last investor id processed: ' ++ (if(isEmpty(payload['lastInvestorId'])) vars.lastInvestorId else payload['lastInvestorId'])]"/>
+		<os:store doc:name="Store lastBorrowerId" doc:id="0357fe79-eabe-4dc3-9b39-5f3f01f422bd" key="lastBorrowerId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastBorrowerId'])) vars.lastBorrowerId as Number else payload['lastBorrowerId'] as Number]]]></os:value>
+		</os:store>
+		<os:store doc:name="Store lastinvestorId" doc:id="c8c135e7-76b5-4d47-973f-0a9ab7b4bc37" key="lastInvestorId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastInvestorId'])) vars.lastInvestorId as Number else payload['lastInvestorId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="BorrowerProcessAPIFlow" doc:id="56caa9e9-f9ef-44fa-8111-e8ee7f99bb4f" name="BorrowerProcessAPIFlow" />
+
+	</sub-flow>
+	<!--  <sub-flow name="creditNonRelationshipFlow" doc:id="7a98488b-d984-4b2e-a456-e73d8aa56597" >
+				<logger level="INFO" doc:name="creditFlowStarted" doc:id="9deeae66-92fb-431c-af1c-22421e0cc0a3" message='Credit flow started !!!' />
+		<os:retrieve doc:name="Retrieve lastCreditId" doc:id="9f6220c0-ec76-4b80-aea4-2af491c313e2" key="lastCreditId" target="lastCreditId">
+			<os:default-value ><![CDATA[#[p('id.creditId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api: credit_history_flow" doc:id="cde1196b-890f-4ef7-a32f-d947d15d99c1" path="/creditApplications" config-ref="HTTP_Request_MySQL_configuration">
+			<http:headers ><![CDATA[#[output application/java
+-&#45;&#45;
+{
+	"lastCreditId" : vars.lastCreditId
+}]]]></http:headers>
+		</http:request>
+
+		<set-variable value='#[payload["payload"]]' doc:name="credit_mysql_data" doc:id="7e8c21d3-d3db-4c55-8a68-00fe50a7ffe3" variableName="credit_mysql_data" />
+		<set-variable value="#[%dw 2.0
+output application/java
+-&#45;&#45;
+if (vars.credit_mysql_data.Borrower_Opportunity__c != null) (sizeOf(vars.credit_mysql_data)) else 0]" doc:name="creditCount" doc:id="b388f2bf-ab43-4d39-8030-3a2518787fcc" variableName="creditCount" />
+		<logger level="INFO" doc:name="countLogger" doc:id="f7546a6e-091a-4dde-a2a7-3ea0202451e1" message='#["Number of credit records fetched :" ++ vars.creditCount]' />
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="566d8cd0-d39a-4fa3-a888-5afdcc825b42" message="#[%dw 2.0
+output text/plain
+-&#45;&#45;
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastCreditId else payload['lastId'])]"/>
+		<os:store doc:name="Store lastCreditId" doc:id="a5ddb2d7-0355-45c6-8125-980447e5a6f5" key="lastCreditId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+-&#45;&#45;
+if(isEmpty(payload['lastId'])) vars.lastCreditId as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="CreditProcessApiFlow" doc:id="f33c214f-789f-4d8f-b6fc-ad0d47741ab9" name="CreditProcessApiFlow" />
+
+	</sub-flow> -->
+	<sub-flow name="loanNonRelationshipFlow" doc:id="cabefafa-3b84-460a-bcfd-4b4723d6577b" >
+					<logger level="INFO" doc:name="loanFlowStarted" doc:id="79015c97-84f2-475d-982e-9e39684d9977" message='Loan flow started !!!' />
+		<os:retrieve doc:name="Retrieve lastLoanAgreementId" doc:id="362dd83f-4b0d-42c1-b50e-48f0a7f30ec4" key="lastLoanAgreementId" target="lastLoanAgreementId">
+			<os:default-value ><![CDATA[#[p('id.loanAgreementId')]]]></os:default-value>
+		</os:retrieve>
+		<os:retrieve doc:name="Retrieve lastLoanHistoryId" doc:id="56c6469c-d6b3-4cfb-bf26-0b4694f2b3d8" key="lastLoanHistoryId" target="lastLoanHistoryId">
+			<os:default-value ><![CDATA[#[p('id.lastLoanHistoryId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api: loan_history_flow" doc:id="dab65ad3-4214-402a-8f21-21737c7b6563" path="/loanApplications" config-ref="HTTP_Request_MySQL_configuration">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"lastLoanAgreementId" : vars.lastLoanAgreementId,
+	"lastLoanHistoryId" : vars.lastLoanHistoryId
+}]]]></http:headers>
+		</http:request>
+
+		<set-variable value='#[payload["payload"]]' doc:name="loan_mysql_data" doc:id="5d3e9967-a1d7-499c-b0e7-2e7cadbcab0b" variableName="loan_mysql_data" />
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (vars.loan_mysql_data.Borrower_Opportunity__c != null) (sizeOf(vars.loan_mysql_data)) else 0]" doc:name="loanCount" doc:id="9b5c7ddc-a2d3-4e50-9b6c-832f0d74ccc0" variableName="loanCount" />
+		<logger level="INFO" doc:name="countLogger" doc:id="ffbe0f32-c85f-4113-8bcd-fa5f779ec12b" message='#["Number of loan records fetched :" ++ vars.loanCount]' />
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="124a24c4-8955-4417-89c0-4cb9b422dd7b" message="#[%dw 2.0
+output text/plain
+---
+'Last loan agreement id processed: ' ++ (if(isEmpty(payload['lastLoanAgreementId'])) vars.lastLoanAgreementId else payload['lastLoanAgreementId']) ++ '\n' ++
+'Last loan history id processed: ' ++ (if(isEmpty(payload['lastLoanHistoryId'])) vars.lastLoanHistoryId else payload['lastLoanHistoryId'])]"/>
+		<os:store doc:name="Store lastLoanAgreementId" doc:id="1386f1b9-93e1-4a45-a0dc-27a5944e0301" key="lastLoanAgreementId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastLoanAgreementId'])) vars.lastLoanAgreementId as Number else payload['lastLoanAgreementId'] as Number]]]></os:value>
+		</os:store>
+		<os:store doc:name="Store lastLoanHistoryId" doc:id="1190f1f6-b141-41d1-bfee-4c32d16860e7" key="lastLoanHistoryId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastLoanHistoryId'])) vars.lastLoanHistoryId as Number else payload['lastLoanHistoryId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="LoanApiProcessFlow" doc:id="7f22e609-9054-425c-b32c-d17052de7296" name="LoanApiProcessFlow" />
+
+
+	</sub-flow>
+	<sub-flow name="partnerNonRelationshipFlow" doc:id="5289be57-fe71-46cf-a9a5-86521807d995" >
+		<logger level="INFO" doc:name="partnerFlowStarted" doc:id="deff8e67-1e49-42a8-bb68-b1214cef4e48" message="Partner flow started !!!"/>
+		<os:retrieve doc:name="Retrieve lastPartnerContactId" doc:id="067d8cdb-53fd-45be-b0d2-cf5dfa2ecd66" key="lastPartnerContactId" target="lastPartnerContactId">
+			<os:default-value ><![CDATA[#[p('id.partnerContact')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api: api_partner_flow" doc:id="9e897c60-eafd-4144-9fcd-80e8a473bb38" config-ref="HTTP_Request_MySQL_configuration" path="/partnerContacts">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"partnerContactId" : vars.lastPartnerContactId,
+	"interval" : vars.interval
+}]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload['payload']]" doc:name="partner_mysql_data" doc:id="e8280efc-0491-422f-8061-4cb31ff8fcfe" variableName="partner_mysql_data"/>
+		<set-variable doc:name="partnerCount" doc:id="c2561a24-5384-4b5b-b037-58feda400b0d" variableName="partnerCount" value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.partner_mysql_data)) (sizeOf(vars.partner_mysql_data)) else 0]"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="bec56dde-6bbc-442c-a5d7-34427df28034" message='#["Number of partner contacts records fetched :" ++ vars.partnerCount]'/>
+		<logger level="INFO" doc:name="Last id Logger" doc:id="6b947032-800d-4075-a14e-ebbc7c4cfb23" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastPartnerContactId else payload['lastId'])]" />
+		<os:store doc:name="Store lastPartnerContactId" doc:id="77a544b0-be2b-47dc-99d7-3c921fa6afd1" key="lastPartnerContactId">
+			<os:value><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastPartnerContactId as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="PartnerApiProcessFlow" doc:id="a6e6ebdd-0ccc-4e24-b4f7-763e220a549d" name="parterContactSubFlowFlow"/>
+	</sub-flow>
+	<sub-flow name="loanProductNonRelationshipFlow" doc:id="e838ed0f-4300-40e7-bb77-6bd4912321f8" >
+		<logger level="INFO" doc:name="Logger" doc:id="7e52803a-a480-48e1-8e7e-76d57a2aad85" message="Loan Product flow started !!!"/>
+		<os:retrieve doc:name="Retrieve lastLoanProduct" doc:id="aa7bcd18-e3d7-4d11-8dd8-7fd922bb1459" key="lastLoanProduct" target="lastLoanProduct">
+			<os:default-value ><![CDATA[#[p('id.loanProduct')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api:api_loan_product_api" doc:id="7cdfcee3-948f-4f60-9e32-23036e98ac94" config-ref="HTTP_Request_MySQL_configuration" path="/loanProduct">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"lastLoanProductID" : vars.lastLoanProduct
+}]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload['payload']]" doc:name="loan_product_data" doc:id="98422f71-c2b7-4433-843f-bf1a8fb06d4c" variableName="loanProductData"/>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.loanProductData)) (sizeOf(vars.loanProductData)) else 0]" doc:name="loanProductCount" doc:id="a2a80f1f-eaab-420c-ab53-bf912b0a9215" variableName="loanProductCount"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="a310c645-1f2f-4014-923a-c1dfd783f104" message='#["Number of loan product records fetched :" ++ vars.loanProductCount]'/>
+		<logger level="INFO" doc:name="Last id Logger" doc:id="2f9b8938-8f79-4486-9abf-ce369e5f154d" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastLoanProduct else payload['lastId'])]" />
+		<os:store doc:name="Store lastLoanProduct" doc:id="34407dc1-4708-481b-9e37-6292fa849579" key="lastLoanProduct">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastLoanProduct as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="LoanProductApiProcessFlow" doc:id="384a537f-1e2c-4d28-afea-ec56adc67acf" name="loanProductAPIFlow"/>
+	</sub-flow>
+	<sub-flow name="partnerProductNonRelationshipFlow" doc:id="aeb8f933-2aa9-4388-ad36-5ca5d370b354" >
+		<logger level="INFO" doc:name="Logger" doc:id="a4d1c661-88ea-4174-b30f-9d69ba12d370" message="Partner Product flow started !!!"/>
+		<os:retrieve doc:name="Retrieve lastPartnerProduct" doc:id="cab6c343-247c-4f66-825a-565478d0cfee" key="lastPartnerProduct" target="lastPartnerProduct">
+			<os:default-value ><![CDATA[#[p('id.partnerProduct')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api:partner_product_api" doc:id="68daa7a9-2c00-4778-8b5c-bce0c5dc8942" config-ref="HTTP_Request_MySQL_configuration" path="/partnerProducts">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"partnerProductId" : vars.lastPartnerProduct
+}]]]></http:headers>
+		</http:request>
+		<set-variable value='#[payload["payload"]]' doc:name="partner_product_data" doc:id="96ef5d0d-737e-4cc1-b691-997fdfa13849" variableName="partnerProductData"/>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.partnerProductData)) (sizeOf(vars.partnerProductData)) else 0]" doc:name="partnerProductCount" doc:id="e0d39820-d5b2-473a-aadc-4eadd61d8cc6" variableName="partnerProductCount"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="5dac9c83-21e1-4e18-85b3-4f053ccc26ef" message='#["Number of partner product records fetched :" ++ vars.partnerProductCount]'/>
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="b22567e9-a06c-40b2-a193-db815697aa85" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastPartnerProduct else payload['lastId'])]"/>
+		<os:store doc:name="Store lastPartnerProduct" doc:id="9be2daa2-b083-43a2-814a-54401756677c" key="lastPartnerProduct" failOnNullValue="false">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastPartnerProduct as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="PartnerProductApiReference" doc:id="15cc13c7-7156-4ad6-997b-4546425ca032" name="partnerProductSubFlow"/>
+	</sub-flow>
+	<sub-flow name="partnerAccountNonRelationshipFlow" doc:id="6d51b6b0-f694-4a09-bd15-47a0ce239148" >
+		<logger level="INFO" doc:name="Logger" doc:id="293f026c-77c0-4351-80cb-f5ee16ea3832" message="Partner Account flow started !!!"/>
+		<os:retrieve doc:name="Retrieve lastPartnerAccount" doc:id="d84affaf-1c15-4f66-b1c0-0e74c3296e15" key="lastPartnerAccount" target="lastPartnerAccount">
+			<os:default-value ><![CDATA[#[p('id.partnerAccount')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api:partner_account_api" doc:id="c045600b-d5ff-49ca-9638-d0c2613ad3bd" config-ref="HTTP_Request_MySQL_configuration" path="/partnerAccounts">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"partnerAccountId" : vars.lastPartnerAccount
+}]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload['payload']]" doc:name="partner_account_data" doc:id="f1b1ad93-3b0c-4740-9e28-adebff0d48cd" variableName="partnerAccountData"/>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.partnerAccountData)) (sizeOf(vars.partnerAccountData)) else 0]" doc:name="partnerAccountCount" doc:id="de8878b4-cd7c-43a9-891c-c20dbfd09d89" variableName="partnerAccountCount"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="349879f8-fa57-4da2-ad9c-1e82a38cd0b3" message='#["Number of partner account records fetched :" ++ vars.partnerAccountCount]'/>
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="32941906-f446-4064-85a4-adff4f9a8e90" message="#[%dw 2.0
+output text/plain
+---
+'Last id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastPartnerAccount else payload['lastId'])]"/>
+		<os:store doc:name="Store lastPartnerAccount" doc:id="a1aa8db5-a443-45da-a9cd-a88358de74ab" key="lastPartnerAccount">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastPartnerAccount as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="PartnerAccountApiReference" doc:id="6162efb3-7901-4eff-9e4c-15a366129af6" name="partnerAccountSubFlowFlow"/>
+	</sub-flow>
+	<sub-flow name="loanAgreementFlow" doc:id="a86d9cdd-af52-4719-a990-023660aa223a" >
+		<logger level="INFO" doc:name="Logger" doc:id="4b93aeb6-f265-4cde-a6bd-241734a0c4a3" message="Loan Agreement flow started !!!"/>
+		<os:retrieve doc:name="Retrieve BLTHistory" doc:id="a76ed0b5-41b8-42a8-b4f0-4fba362136a3" key="lastBLTId" target="lastBLTId">
+			<os:default-value ><![CDATA[#[p('id.BLTId')]]]></os:default-value>
+		</os:retrieve>
+		<os:retrieve doc:name="Retrieve BLTAHistory" doc:id="cb240480-b0b0-4b1e-a511-7526e95c9725" key="lastBLTAId" target="lastBLTAId">
+			<os:default-value ><![CDATA[#[p('id.BLTAId')]]]></os:default-value>
+		</os:retrieve>
+		<os:retrieve doc:name="Retrieve BLTOHistory" doc:id="92b3c453-ce52-4f8b-a10f-642666846dcf" key="lastBLTOId" target="lastBLTOId">
+			<os:default-value ><![CDATA[#[p('id.BLTOId')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api:loan_agreement_api" doc:id="0854a410-402c-49e7-9566-24273b63ab20" config-ref="HTTP_Request_MySQL_configuration" path="/loanAgreement">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"lastBLTOId" : vars.lastBLTOId,
+	"lastBLTId" : vars.lastBLTId,
+	"lastBLTAId" : vars.lastBLTAId
+}]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload['payload']]" doc:name="loan_agreement_data" doc:id="a4befb3c-746e-454d-b492-6c1724db4f83" variableName="loanAgreementData"/>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.loanAgreementData)) (sizeOf(vars.loanAgreementData)) else 0]" doc:name="loanAgreementCount" doc:id="bd67292a-7c8b-41fc-b917-41c4cb9e51f3" variableName="loanAgreementCount"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="af33d452-f621-4c4e-9da0-df7e5eb9b70e" message='#["Number of loan agreements records fetched :" ++ vars.loanAgreementCount]'/>
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="914d72ed-70bb-4bbb-bdb4-6053d4a33423" message="#[%dw 2.0
+output text/plain
+---
+'Last BLT history id processed: ' ++ (if(isEmpty(payload['lastBLTId'])) vars.lastBLTId else payload['lastBLTId']) ++ '\n' ++
+'Last BLTA history id processed: ' ++ (if(isEmpty(payload['lastBLTAId'])) vars.lastBLTAId else payload['lastBLTAId'])  ++ '\n' ++
+'Last BLTO history id processed: ' ++ (if(isEmpty(payload['lastBLTOId'])) vars.lastBLTOId else payload['lastBLTOId'])]"/>
+		<os:store doc:name="Store BLTHistory" doc:id="826f182f-9bd4-4ad9-9f23-6311077183a1" key="lastBLTId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastBLTId'])) vars.lastBLTId as Number else payload['lastBLTId'] as Number]]]></os:value>
+		</os:store>
+		<os:store doc:name="Store BLTOHIstory" doc:id="a1448634-fda4-4312-867d-ea95a7b5224a" key="lastBLTOId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastBLTOId'])) vars.lastBLTOId as Number else payload['lastBLTOId'] as Number]]]></os:value>
+		</os:store>
+		<os:store doc:name="Store BLTAHistory" doc:id="1438ba04-4343-4545-bfdf-f88aafeb78a4" key="lastBLTAId">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastBLTAId'])) vars.lastBLTAId as Number else payload['lastBLTAId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="LoanAgreementApi Reference" doc:id="714446a2-75f9-4a00-9755-f48a54af7fe4" name="loanAgreementSubFlowFlow"/>
+	</sub-flow>
+	<sub-flow name="loanDisbursementFlow" doc:id="9e02c8df-5000-4305-bfc8-12c7f4b757f2" >
+		<logger level="INFO" doc:name="Logger" doc:id="a826b0f7-cb45-4924-bacf-4da7d6e73789" message="Loan Disbursement flow started !!!"/>
+		<os:retrieve doc:name="Retrieve Loan Disbursement History" doc:id="9b1417fd-69fd-4d5e-9cdc-31d4add8e16d" key="lastLoanDisbursement" target="lastLoanDisbursement">
+			<os:default-value ><![CDATA[#[p('id.loanDisbursement')]]]></os:default-value>
+		</os:retrieve>
+		<http:request method="GET" doc:name="mysql_sys_api:loan_disbursement_api" doc:id="f89b641e-92ff-43c1-841e-0c84893604ba" config-ref="HTTP_Request_MySQL_configuration" path="/loanDisbursement">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"loanDisbursementId" : vars.lastLoanDisbursement
+}]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload['payload']]" doc:name="loan_disbursement_data" doc:id="e5a22c0e-54e1-44b0-b6d2-d9f8116381f1" variableName="loanDisbursementData"/>
+		<set-variable value="#[%dw 2.0
+output application/java
+---
+if (!isEmpty(vars.loanDisbursementData)) (sizeOf(vars.loanDisbursementData)) else 0]" doc:name="loanDisbursementCount" doc:id="c3b0a22c-bdc8-4c90-8cbe-759bd6dbb4be" variableName="loanDisbursementCount"/>
+		<logger level="INFO" doc:name="countLogger" doc:id="cd31946a-1874-445b-b8ec-1209e377648c" message='#["Number of loan disbursement records fetched :" ++ vars.loanDisbursementCount]'/>
+		<logger level="INFO" doc:name="Last Id Logger" doc:id="e076a05f-09f1-417d-928c-b360ba507604" message="#[%dw 2.0
+output text/plain
+---
+'Last Loan Disbursement history id processed: ' ++ (if(isEmpty(payload['lastId'])) vars.lastLoanDisbursement else payload['lastId'])]"/>
+		<os:store doc:name="Store Loan Disbursement History" doc:id="d192a4fe-4f9c-4117-a45c-4f949315ad83" key="lastLoanDisbursement">
+			<os:value ><![CDATA[#[%dw 2.0
+output application/java
+---
+if(isEmpty(payload['lastId'])) vars.lastLoanDisbursement as Number else payload['lastId'] as Number]]]></os:value>
+		</os:store>
+		<flow-ref doc:name="LoanDisbursementApiReference" doc:id="333c18c0-7d2b-4ee3-af7f-885974d8df01" name="LoanDisbursementProcessAPIFlow"/>
+	</sub-flow>
+	<flow name="relationshipsFlow" doc:id="6c766a96-42f0-4cbf-a0f3-d7717cb96479">
+		<logger level="INFO" doc:name="ChannelPartnerFlag Logger" doc:id="bf06784c-aa4b-4cb9-abec-d73231d15f74" message="Channel Partner Flags Relationship flow started !!"/>
+		<flow-ref doc:name="ChannelPartnerFlagAPIFlow" doc:id="ef80713b-6dce-4f86-880b-042ae9ee7e27" name="partnerAccountSubFlowFlow"/>
+		<logger level="INFO" doc:name="OpportunityRelationshipLogger" doc:id="8aa38a96-69d0-4068-8dbd-3e4e38c859ce" message="Opportunity Relationship flow started !!" />
+		<flow-ref doc:name="opportunityProcessAPIFlow" doc:id="c3594796-71df-4aab-824d-22775728cd4e" name="opportunityProcessAPIFlow" />
+		<logger level="INFO" doc:name="projectRelationshipLogger" doc:id="8b405870-70fe-4182-8c6a-123282e049b3" message="Project Relationship Flow started !!" />
+		<flow-ref doc:name="projectProcessAPIFlow" doc:id="324cf3c9-4ad9-42b7-9c3e-52e0b5b70577" name="projectProcessAPIFlow" />
+		<logger level="INFO" doc:name="contactRelationshipLogger" doc:id="beccaa46-a156-4737-afdc-987b7f55f207" message="Contact Relationship flow started" />
+		<flow-ref doc:name="BorrowerProcessAPIFlow" doc:id="6120bc12-1e56-4524-806e-215fece0f1a0" name="BorrowerProcessAPIFlow" />
+		<logger level="INFO" doc:name="loanRelationshipLogger" doc:id="524bbdfd-077a-407b-b80d-0ff7503cd3e1" message="Loan Relationship flow started !!" />
+		<flow-ref doc:name="LoanApiProcessFlow" doc:id="149803be-087a-484c-844d-3a32b9b88dfa" name="LoanApiProcessFlow" />
+		<logger level="INFO" doc:name="loanAgreementLogger" doc:id="0a2a2894-0d56-4167-9525-e078dbf2c843" message="Loan Agreement flow started !!"/>
+		<flow-ref doc:name="LoanAgreementApiFlow" doc:id="84870fb1-db5f-4784-834f-e465a08f8396" name="loanAgreementFlow"/>
+		<logger level="INFO" doc:name="loanDisbursementLogger" doc:id="8d8c01d1-4d55-4dfa-a5fd-8e0743d71f24" message="Loan Disbursement flow started !!"/>
+		<flow-ref doc:name="loanDisbursementApiFlow" doc:id="e40a84a6-de7c-451f-b4aa-8ec7f7b31733" name="loanProductAPIFlow"/>
+	</flow>
+		
+
+</mule>

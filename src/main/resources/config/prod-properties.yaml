@@ -1,0 +1,27 @@
+http:
+  host: "localhost"
+  port: "8081"
+  mysql:
+    host: "mule-worker-internal-sys-mysql-api-prod.us-e1.cloudhub.io"
+    port: "8091"
+  sfdc:
+    host: "mule-worker-internal-sys-sfdc-api-prod.us-e1.cloudhub.io"
+    port: "8091"
+sdfc:
+  user: "mule.integration@joinmosaic.com"
+  pass: "QfihN2qYP4m9"
+  securityToken: "JcBuln5AlY7nJW9avv315wl3L"
+  authenticationURL: "https://login.salesforce.com/services/Soap/u/52.0" 
+smtp:
+  host: "smtp.gmail.com"
+  port: "25" 
+  user: "anypoint-noreply@joinmosaic.com"
+  password: "FapkEnq9V2nbObf0kFsq"
+  from: "anypoint-noreply@joinmosaic.com"
+  to: "manjunath.sake@joinmosaic.com" 
+objectstore:
+  defaultvalue: "'2019-07-02T00:00:00'"  
+contact:
+  recordTypeId: "012f4000000JDBLAA4"
+relationship:
+  delay: "5000" 

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+		<flow name="BorrowerProcessAPIFlow" doc:id="a8aef522-7023-4839-8e41-7702932dd08f" >
+		<choice doc:name="Choice" doc:id="87eef2bb-c3f1-4e0b-9e14-bd626f031f70" >
+			<when expression="#[vars.opportunityCount == 0]">
+				<logger level="INFO" doc:name="Logger" doc:id="3a4a7e70-4d33-480b-818e-b8328927364b" message="No New data in Contact"/>
+			</when>
+			<otherwise >
+		<choice doc:name="Choice" doc:id="a13003a6-b1b9-4edc-84f9-39cc44e8017b">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="getSFDCJsonStructure" doc:id="04dee921-dfc9-4b62-9c4d-7edaf4c5e2e1">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var p1 = vars.borrower_mysql_data
+---
+p1 map((element) ->{
+	"User_Id__c": element.User_Id__c,
+	"Primary_Borrower_Opportunity__r": {
+		"Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+	},
+	"Account": {
+		"Channel_Partner_ID__c": element.Channel_Partner_ID__c,
+	},
+	"Superkey__c": element.Superkey__c,
+	//2157 Contacts without accounts
+	"Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+	"EmailFirstName": lower(element.Email ++ element.FirstName),
+	"EmailLastName": lower(element.Email ++ element.LastName),
+	"FirstNameLastName": lower(element.FirstName ++ element.LastName)
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					</when>
+					<otherwise >
+<ee:transform doc:name="getSFDCJsonStructure" doc:id="d9adefed-ba17-46f4-8959-da98d3a296aa">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn = "everywhere"
+var p1 = vars.borrower_mysql_data
+fun format(d) = if ( isEmpty(d) ) null else d as LocalDateTime {
+	format: "yyyy-MM-dd'T'HH:mm:ss"
+} as String {
+	format: "yyyy-MM-dd"
+}
+---
+p1 map((element) ->{
+	"Phone": element.Phone,
+	"User_Id__c": element.User_Id__c,
+	"MailingStateCode": element.MailingState,
+	"Last_Four_SSN_Text__c": element.Last_Four_SSN_Text__c,
+	"MailingCity": element.MailingCity,
+	"MailingPostalCode": element.MailingZipCode,
+	"OtherStreet": element.MailingStreet,
+	"OtherCity": element.MailingCity,
+	"OtherStateCode": element.MailingState,
+	"OtherPostalCode": element.MailingZipCode,
+	"Birthdate": format(element.Birthdate),
+	"MailingStreet": element.MailingStreet,
+	"LastName": element.LastName,
+	"MobilePhone": element.MobilePhone,
+	"Superkey__c": element.Superkey__c,
+	"FirstName": element.FirstName,
+	"Email": element.Email,
+	"RecordTypeId": p('contact.recordTypeId'),
+	//2157 Contacts without accounts
+	"Platform_Opportunity_ID__c": element.Platform_Opportunity_ID__c,
+	"EmailFirstName": lower(element.Email ++ element.FirstName),
+	"EmailLastName": lower(element.Email ++ element.LastName),
+	"FirstNameLastName": lower(element.FirstName ++ element.LastName)
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+					</otherwise>
+				</choice>
+				<foreach doc:name="For Each" doc:id="40b65c20-20c1-4a58-b78d-3dd2680e20a0" collection="payload" batchSize="30000">
+					<ee:transform doc:name="jsonPayload" doc:id="904d5a97-0cbb-4709-b629-4394efeb2a0e" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api: upsertBorrowersDataFlow" doc:id="235a9a36-a38b-4116-af39-2affd840a9fa" path="/borrowers" config-ref="HTTP_Request_sfdc_configuration">
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+			
+			
+</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a899bcc7-d991-48e1-93d8-d4a15879aaae" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="49abb558-d870-4f08-88a8-34d92da47341" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="d54f6263-c177-443b-8e01-b13bcc88469f" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+		
+					</flow>
+	
+	
+	</mule>

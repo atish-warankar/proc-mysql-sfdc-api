@@ -1,0 +1,28 @@
+http:
+  host: "localhost"
+  port: "8081"
+  mysql:
+    host: "mule-worker-internal-sys-mysql-api-stg.us-e1.cloudhub.io"
+    port: "8091"
+  sfdc:
+    host: "mule-worker-internal-sys-sfdc-api-stg.us-e1.cloudhub.io"
+    port: "8091"
+sdfc:
+  user: "shivam.khandelwal@apisero.com.mosaictest"
+  pass: "Apisero@12345"
+  securityToken: "jpdvnciAp6SropbOQbeGd16Q"
+  authenticationURL: "https://test.salesforce.com/services/Soap/u/43.0" 
+smtp:
+  host: "smtp.gmail.com"
+  port: "587" 
+  user: "apiseroindia@gmail.com"
+  password: "Apisero2019"
+  from: "apiseroindia@gmail.com"
+  to: "apiseroindia@gmail.com" 
+objectstore:
+  defaultvalue: "'2019-06-11T13:22:32"
+contact:
+  recordTypeId: "012f4000000JDBLAA4" 
+relationship:
+  delay: "5000"   
+ 

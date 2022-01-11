@@ -1,0 +1,4 @@
+{
+  "minMuleVersion": "4.1.4",
+  "secureProperties":["sdfc.user","sdfc.pass","sdfc.securityToken","smtp.user","smtp.password"]
+}

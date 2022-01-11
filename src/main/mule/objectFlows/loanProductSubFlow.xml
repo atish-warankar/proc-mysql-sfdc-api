@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="loanProductAPIFlow" doc:id="39dce2fd-db0e-4f03-9bfc-27ca1950994d" >
+		<choice doc:name="Choice" doc:id="c22194c8-1924-4f42-af84-e1f82b356e73" >
+			<when expression="#[vars.loanProductCount == 0]">
+				<logger level="INFO" doc:name="Logger" doc:id="a38bbecd-0ccf-4ea2-a6bc-2eb236caab5f" message="No New data in Loan Product"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="d77944b9-3b96-46d1-a5e2-65e6647ed171" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.loanProductData
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format:"yyyy-MM-dd"}
+fun booleanValue(d) = if(d == "true") true else false
+---
+p1 map({
+	"Battery_Option__c": booleanValue($.Battery_Option__c),
+	"Begin_Offering__c": format($.Begin_Offering__c),
+	"Minimum_Score__c": $.Minimum_Score__c,
+	"LP_Id__c": $.LP_Id__c,
+	"Tenor__c": $.Tenor__c,
+	"Loan_Month_Term__c": $.Loan_Month_Term__c,
+	"Product_Class__c": $.Product_Class__c,
+	"Dealer_Fee__c": $.Dealer_Fee__c,
+	"Reroof_Option__c": booleanValue($.Reroof_Option__c),
+	"Status__c": $.Status__c,
+	"Product_Type_ID__c": $.Product_Type_ID__c,
+	"Choice_Rate__c": $.Choice_Rate__c,
+	"approved_states__c": $.approved_states__c,
+	"itc_percent__c": $.itc_percent__c,
+	"Assigned_to_Partner__c": booleanValue($.Assigned_to_Partner__c),
+	"Standard_Rate__c": $.Standard_Rate__c,
+	"check_fee__c": $.check_fee__c,
+	"Maximum_Loan_Amount__c": $.Maximum_Loan_Amount__c,
+	"Minimum_Amount__c": $.Minimum_Amount__c,
+	"Name": $.Name,
+	"Product_Category_Name__c": $.Product_Category_Name__c,
+	"itc_month_term__c": $.itc_month_term__c
+})]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<foreach doc:name="For Each" doc:id="b0a4d430-657b-4881-8722-38da0b827cb9" collection="payload" batchSize="5000">
+					<ee:transform doc:name="Transform Message" doc:id="d2cdd063-9f75-434e-b091-02ffdd3ed341" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertLoanProductsBusinessLogicFlow" doc:id="2d783bd4-0fdb-41dc-a1c0-94b43afc0d31" config-ref="HTTP_Request_sfdc_configuration" path="/loanProducts">
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+				<logger level="INFO" doc:name="Logger" doc:id="e914b31e-da94-4fb3-be78-c9445337c0a2" message="Loan Product flow Completed !!"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="fe8465ec-b496-489a-87a3-ca1321915d40" >
+				<ee:transform doc:name="Transform Message" doc:id="f7fef958-c7d1-4d0b-bca6-2929a0e010da" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="Error Email SubFlow" doc:id="891e6bc6-d33d-4422-b988-42e7f435e3dc" name="errorEmailSubFlow"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

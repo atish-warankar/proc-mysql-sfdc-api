@@ -1,0 +1,57 @@
+http:
+  host: "0.0.0.0"
+  port: "8091"
+  mysql:
+   host: "mule-worker-internal-sys-mysql-api-local.us-e1.cloudhub.io" 
+   port: "8091"
+  sfdc:
+    host: "mule-worker-internal-sys-sfdc-api-local.us-e1.cloudhub.io"
+    port: "8091" 
+  #mysql:
+    #host: "mule-worker-internal-sys-mysql-api.us-e1.cloudhub.io"
+    #port: "8091"
+  #sfdc:
+   # host: "mule-worker-internal-sys-sfdc-api-local.us-e1.cloudhub.io"
+   # port: "8091"    
+smtp:
+  host: "smtp.gmail.com"
+  port: "587" 
+  user: "anypoint-noreply@joinmosaic.com"
+  password: "FapkEnq9V2nbObf0kFsq"
+  from: "anypoint-noreply@joinmosaic.com"
+  to: "manjunath.sake@joinmosaic.com"
+  subject: "Process Api Error" 
+  subjectsferror: "Error in connecting to Salesforce"
+  sfetype: "HTTP:CONNECTIVITY"
+sfdc:
+  #username: "manjunath.sake@joinmosaic.com.mulesoft2"
+  #password: "Bhavesh001"
+  #securitytoken: "XCwQBYGJz3t1oePgb6C38YSn"
+  #authenticationURL: "https://test.salesforce.com/services/Soap/u/49.0"
+  user: "manjunath.sake1@joinmosaic.com.full"
+  pass: "Bhavesh001"
+  #securityToken: "UyE4ylUKAhskVxy6YAQH2IIhZ"
+  authenticationURL: "https://test.salesforce.com/services/Soap/u/52.0"
+objectstore:
+  defaultvalue: "'2021-01-05T00:00:00"
+contact:
+  recordTypeId: "012f4000000JDBLAA4" 
+relationship:
+  delay: "1000"
+id:
+  loanAgreementId: "3036114"
+  projectId: "997889"
+  loanProduct: "5189"
+  creditId: "75"
+  partnerProduct: "133940"
+  lastLoanHistoryId: "2443541"
+  partnerAccount: "42867"
+  borrowerId: "6605937"
+  BLTOId: "8826"
+  partnerContact: "185090"
+  recordTypeId: "1"
+  lastInvestorId: "167623"
+  opportunityId: "1601362"
+  BLTId: "9411"
+  BLTAId: "11490"
+  loanDisbursement: "317030"

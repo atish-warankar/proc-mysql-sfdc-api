@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+		<flow name="projectProcessAPIFlow" doc:id="c78da7c3-f0e2-4b93-87f2-1c0ad4e88c80">
+		<choice doc:name="Choice" doc:id="d296bc6d-08bf-4a15-876b-0767bfde35df" >
+			<when expression="#[vars.prj_mysql_data.solar_system_id == null]">
+				<logger level="INFO" doc:name="Logger" doc:id="583eb1ec-e5c6-4a9c-af92-e6e830374095" message="No project data"/>
+			</when>
+			<otherwise >
+		<choice doc:name="Choice" doc:id="5955d0d2-8fc7-496e-b503-7ca0ec21b771">
+					<when expression="#[vars.relationshipFlag == true]">
+						<ee:transform doc:name="relationshipData" doc:id="962d3b62-d4c4-4ec4-81a2-ddb4c66b0110">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json 
+var p1 = vars.prj_mysql_data
+---
+p1 map((element) ->{
+  Borrower_Opportunity__r : {"Platform_Opportunity_ID__c" : element.opportunity_id} ,
+    Installer_HIA_Number__c : element.installer_agreement_id,
+    Platform_Battery_ID__c : element.battery_id,
+    Platform_Project_ID__c : element.project_id,
+    Platform_Solar_System_ID__c : element.solar_system_id,
+    Project_Status_ID__c : element.status_id,
+    
+})]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="projectData" doc:id="f4758850-a8e0-4db8-a207-06019a69e300">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.prj_mysql_data
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format: "yyyy-MM-dd"}
+---
+p1 map((element) ->{
+    Battery_Capacity_DC_KWH__c : element.capacity_dc_kwh,
+    Battery_Inverter_ID__c : element.battery_inverter_id,
+    Battery_Inverter_Manufacturer__c : element.battery_inverter_manufacturer,
+    Battery_Inverter_Model__c : element.battery_inverter_model,
+    Battery_Manufacturer__c : element.battery_manufacturerr,
+    Battery_Model__c : element.battery_model,
+    Battery_Setup_Type__c : element.battery_setup_type,
+    DC_System_Size_KW__c : element.dc_system_size_kw,
+    Estimated_Annual_Production__c : element.est_annual_production,
+    Estimated_Install_Date__c : format(element.est_install_date),
+    Install_Confirmed_Document_ID__c : element.install_confirmed_document_id,
+    Installed_Confirmed_Date__c : format(element.install_confirmed_date),
+    Installer_HIA_Number__c : element.installer_agreement_id,
+    Installer_Agreement_Date__c : format(element.installer_agreement_date),
+    Inverter_Manufacturer__c : element.panel_inverter_manufacturer,
+    Inverter_Model__c : element.panel_inverter_model,
+    Loan_Amount__c : element.loan_amount,
+    Monthly_Bill_After_Solar__c : element.monthly_bill_after_solar,
+    Monthly_Bill_Before_Solar__c : element.monthly_bill_before_solar,
+    Notes__c : element.notes,
+    Panel_Manufacturer__c : element.panel_manufacturer,
+    Panel_Model__c : element.panel_model,
+    Platform_Battery_ID__c : element.battery_id,
+    Proj_Date_Created__c : element.project_date_created,
+    Platform_Project_ID__c : element.project_id,
+    SS_Date_Created__c : format(element.solar_system_date_created),
+    Platform_Solar_System_ID__c : element.solar_system_id,
+    Project_Status_ID__c : element.status_id,
+    Project_Total_Cost__c : element.total_cost,
+    Project_Type__c : element.project_type,
+    Total_System_Price__c : element.total_system_price,
+	Project_Group_Name__c: element.project_group_name,
+	Custom_Project_Name__c: element.project_name,
+	Project_Confirmation_Type__c: element.confirmation_type
+})]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+	
+											</otherwise>
+				</choice>
+		<foreach doc:name="For Each" doc:id="2c39d913-baff-4f63-b1ec-842f5163da1a" collection="payload" batchSize="30000">
+					<ee:transform doc:name="jsonPayload" doc:id="1ae1dce0-3b09-467e-9ebc-faf407a55bfa" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertProjectsBusinessLogicFlow" doc:id="a1a6fb88-e711-40d3-b22e-39f8313aab1d" config-ref="HTTP_Request_sfdc_configuration" path="/project" >
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="9fee7c42-bb20-4574-bf33-b5013e17084f" message="Project flow Completed"/>
+			
+			
+</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8be8ce82-18aa-4615-9b0e-b545222ab1eb" type="ANY">
+				<ee:transform doc:name="error payload" doc:id="4289d260-9426-4e84-a423-18c6afc1b194" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="9e959fe2-f8dd-4063-89cc-5f401fc89d25" name="errorEmailSubFlow"/>
+			
+			</on-error-propagate>
+		</error-handler>
+		
+			</flow>
+	
+	
+	</mule>

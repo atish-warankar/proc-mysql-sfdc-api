@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="partnerProductSubFlow" doc:id="c53c1c01-0578-4b1d-9e8c-fbc06b76dbf0" >
+		<choice doc:name="Choice" doc:id="12893066-3f39-4f48-8723-59c1a8588086" >
+			<when expression="vars.partnerProductCount == 0">
+				<logger level="INFO" doc:name="No data" doc:id="5e6747a4-4708-429a-beb7-e57b8655eb67" message="Not new data"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="14694aca-5c3f-453a-b30a-588f8e70d05f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+var p1 = vars.partnerProductData
+fun format(d) = if(isEmpty(d)) null else d as LocalDateTime {format: "yyyy-MM-dd'T'HH:mm:ss"} as String {format:"yyyy-MM-dd"}
+---
+p1 map({
+	"Channel_Partner_Id__c": $.Channel_Partner_Id__c,
+	"Platform_Date_Created__c": $.Platform_Date_Created__c,
+	"Status_Id__c": $.Status_Id__c,
+	"Platform_Date_Modified__c": $.Platform_Date_Modified__c,
+	"Name": $.Name,
+	"CPLP_Id__c": $.CPLP_Id__c,
+	"Is_Default__c": $.Is_Default__c,
+	"Mosaic_Admin__c": $.Mosaic_Admin__c,
+	"Loan_Product_Id__c": $.Loan_Product_Id__c
+})]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<foreach doc:name="For Each" doc:id="81dbc8a1-66c0-4872-b513-58ca9deb2c36" collection="payload" batchSize="5000">
+					<ee:transform doc:name="Transform Message" doc:id="a3fdbabe-af26-4d0c-b4cd-0c8eff95df1c" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="POST" doc:name="salesforce_sys_api : upsertPartnerProductLogicFlow" doc:id="051eb5de-6ce0-409f-9219-110d971f8b27" config-ref="HTTP_Request_sfdc_configuration" path="/partnersProducts">
+						<http:headers ><![CDATA[#[output application/java
+---
+{
+	"origin" : vars.origin
+}]]]></http:headers>
+					</http:request>
+				</foreach>
+				<logger level="INFO" doc:name="Logger" doc:id="f4ab41c5-e291-4769-b404-2b597f17d726" message="Partner Product flow Completed !!"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bb2e3305-9102-41cc-9264-0fe187d50f95" >
+				<ee:transform doc:name="Transform Message" doc:id="c75be861-8f99-4ada-b3b6-24fc4758bc2c" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorType": error.description
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="errorEmailSubFlow" doc:id="ea19f6db-b2e3-49bf-bd56-3af343c5b8e6" name="errorEmailSubFlow"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
